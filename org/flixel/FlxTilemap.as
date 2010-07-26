@@ -3,6 +3,7 @@ package org.flixel
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
 	import flash.geom.Matrix;
+	import flash.geom.Point;
 	import flash.geom.Rectangle;
 
 	/**
@@ -77,6 +78,19 @@ package org.flixel
 		protected var _screenRows:uint;
 		protected var _screenCols:uint;
 		
+		public var alpha : Number = 1.0;
+		protected var alphaMap : BitmapData = null;
+		
+		public function get TileWidth() : uint
+		{
+			return this._tileWidth;
+		}
+		
+		public function get TileHeight() : uint
+		{
+			return this._tileHeight;
+		}
+		
 		/**
 		 * The tilemap constructor just initializes some basic variables.
 		 */
@@ -100,6 +114,70 @@ package org.flixel
 			_block.fixed = true;
 			_callbacks = new Array();
 			fixed = true;
+		}
+		
+		public function createMap(WidthInTiles:uint, HeightInTiles:uint, DefaultValue:uint, TileGraphic:*, TileWidth:uint = 0, TileHeight:uint = 0):FlxTilemap
+		{
+			heightInTiles = HeightInTiles;
+			widthInTiles = WidthInTiles;
+			totalTiles = heightInTiles * widthInTiles;
+			
+			var i : uint;
+			
+			//	Fill the data array for this tilemap with the default value
+			_data = new Array();
+			for (i = 0; i < totalTiles; i++)
+			{
+				_data.push(DefaultValue);
+			}
+			
+			//Figure out the size of the tiles
+			if (TileGraphic is Class)
+			{
+				_pixels = FlxG.addBitmap(TileGraphic);
+			}
+			else if (TileGraphic is BitmapData)
+			{
+				_pixels = TileGraphic as BitmapData;
+			}
+			else
+			{
+				throw new TypeError("FlxTilemap.createMap expects TileGraphic to be either a Class or BitmapData object!");
+			}
+			
+			_tileWidth = TileWidth;
+			if(_tileWidth == 0)
+				_tileWidth = _pixels.height;
+			_tileHeight = TileHeight;
+			if(_tileHeight == 0)
+				_tileHeight = _tileWidth;
+			_block.width = _tileWidth;
+			_block.height = _tileHeight;
+			
+			FlxG.log("Tile size:" + _tileWidth + "x" + _tileHeight);
+			
+			//Then go through and create the actual map
+			width = widthInTiles*_tileWidth;
+			height = heightInTiles*_tileHeight;
+			_rects = new Array(totalTiles);
+			for(i = 0; i < totalTiles; i++)
+				updateTile(i);
+
+			FlxG.log("Map size:" + width + "x" + height);
+			//Pre-set some helper variables for later
+			_screenRows = Math.ceil(FlxG.height/_tileHeight)+1;
+			if(_screenRows > heightInTiles)
+				_screenRows = heightInTiles;
+			_screenCols = Math.ceil(FlxG.width/_tileWidth)+1;
+			if(_screenCols > widthInTiles)
+				_screenCols = widthInTiles;
+			
+			_bbKey = String(TileGraphic);
+			generateBoundingTiles();
+			refreshHulls();
+			
+			return this;
+			
 		}
 		
 		/**
@@ -266,6 +344,72 @@ package org.flixel
 		 */
 		protected function renderTilemap():void
 		{
+			var alphaOffset : Point;
+			
+			if (this.alpha == 0)
+			{
+				return;
+			}
+			else if (this.alpha != 1.0)
+			{
+				var ax : int;
+				var bw : int;
+				var bwt : int;
+				var bh : int;
+				var rx : int;
+				var ry : int;
+				var a : int;
+				
+				if (this.TileWidth * 255 > 2880)
+				{
+					bwt = FlxU.floor(2880 / this.TileWidth);
+					bw = bwt * this.TileWidth;
+					bh = FlxU.ceil(255 / bwt) * this.TileHeight;
+				}
+				else
+				{
+					bw = 255 * this.TileWidth;
+					bwt = 255;
+					bh = this.TileHeight;
+				}
+				
+				//FlxG.log("Using tilemap alpha: " + bw + ", " + bh + " / " + bwt);
+				
+				if (this.alphaMap == null)
+				{
+					this.alphaMap = new BitmapData(bw, bh, true, 0);
+					rx = ry = 0;
+					
+					for (ax = 0; ax <= 255; ax++)
+					{
+						this.alphaMap.fillRect(new Rectangle(rx, ry, this.TileWidth, this.TileHeight), FlxU.getColor(ax, ax, ax, ax));
+						
+						//FlxG.log("Put alpha " + ax + " at " + rx + ", " + ry);
+						
+						rx += this.TileWidth;
+						if (rx >= bw)
+						{
+							rx = 0;
+							ry += this.TileHeight;
+						}
+					}
+				}
+				
+				a = FlxU.floor(this.alpha * 255);
+				a = a < 2 ? 2 : a;
+				ry = FlxU.floor(a / bwt);
+				rx = a - (ry * bwt);
+				alphaOffset = new Point(rx * this.TileWidth, ry * this.TileHeight);
+				//FlxG.log("Alpha: " + this.alpha + " -> " + a + " / " + alphaOffset.x + ", " + alphaOffset.y);
+				
+				/*
+				FlxG.buffer.fillRect(new Rectangle(0, 0, FlxG.width, FlxG.height), FlxU.getColor(255, 0, 255));
+				var sx : int = 0;
+				
+				FlxG.buffer.copyPixels(this.alphaMap, new Rectangle(sx, 0, this.alphaMap.width - sx, this.alphaMap.height), new Point(), null, null, false);
+				*/
+			}
+			
 			//Bounding box display options
 			var tileBitmap:BitmapData;
 			if(FlxG.showBounds)
@@ -294,8 +438,17 @@ package org.flixel
 				for(c = 0; c < _screenCols; c++)
 				{
 					_flashRect = _rects[cri++] as Rectangle;
-					if(_flashRect != null)
-						FlxG.buffer.copyPixels(tileBitmap,_flashRect,_flashPoint,null,null,true);
+					if (_flashRect != null)
+					{
+						if (this.alpha != 1.0)
+						{
+							FlxG.buffer.copyPixels(tileBitmap, _flashRect, _flashPoint, this.alphaMap, alphaOffset, true);
+						}
+						else 
+						{
+							FlxG.buffer.copyPixels(tileBitmap, _flashRect, _flashPoint, null, null, true);
+						}
+					}
 					_flashPoint.x += _tileWidth;
 				}
 				ri += widthInTiles;
@@ -378,6 +531,22 @@ package org.flixel
 			return false;
 		}
 		
+		override public function overlapsPoint(X:Number, Y:Number, PerPixel:Boolean = false):Boolean 
+		{
+			var tx : int;
+			var ty : int;
+			
+			tx = X / this.TileWidth;
+			ty = Y / this.TileWidth;
+			
+			if (this.getTileAt(X, Y) >= this.collideIndex)
+			{
+				return true;
+			}
+			
+			return false;
+		}
+		
 		/**
 		 * Called by <code>FlxObject.updateMotion()</code> and some constructors to
 		 * rebuild the basic collision data for this object.
@@ -401,7 +570,7 @@ package org.flixel
 		 * 
 		 * @param	Object	The <code>FlxObject</code> you're about to run into.
 		 */
-		override public function preCollide(Object:FlxObject):void
+		override public function preCollide(Object:FlxObject, isVertical : Boolean):Boolean
 		{
 			var r:uint;
 			var c:uint;
@@ -431,6 +600,8 @@ package org.flixel
 			}
 			if(colOffsets.length != col)
 				colOffsets.length = col;
+				
+			return true;
 		}
 		
 		/**
@@ -446,6 +617,14 @@ package org.flixel
 			return getTileByIndex(Y * widthInTiles + X);
 		}
 		
+		public function getTileAt(x : uint, y : uint) : uint
+		{
+			return this.getTile(
+				Math.floor(x / this._tileWidth),
+				Math.floor(y / this._tileHeight)
+			);
+		}
+		
 		/**
 		 * Get the value of a tile in the tilemap by index.
 		 * 
@@ -455,6 +634,7 @@ package org.flixel
 		 */
 		public function getTileByIndex(Index:uint):uint
 		{
+			if (Index < 0 || Index >= _data.length) return 0;
 			return _data[Index] as uint;
 		}
 		
@@ -470,8 +650,12 @@ package org.flixel
 		 */ 
 		public function setTile(X:uint,Y:uint,Tile:uint,UpdateGraphics:Boolean=true):Boolean
 		{
-			if((X >= widthInTiles) || (Y >= heightInTiles))
+			//FlxG.log("Setting tile at " + X + ", " + Y + " to " + Tile);
+			if ((X >= widthInTiles) || (Y >= heightInTiles))
+			{
+				//FlxG.log("\tOOB");
 				return false;
+			}
 			return setTileByIndex(Y * widthInTiles + X,Tile,UpdateGraphics);
 		}
 		
@@ -774,6 +958,7 @@ package org.flixel
 				ry = uint(rx/_pixels.width)*_tileHeight;
 				rx %= _pixels.width;
 			}
+			FlxG.log("Tile " + (_data[Index] - startingIndex) + " yieled rect: " + (new Rectangle(rx, ry, _tileWidth, _tileHeight)));
 			_rects[Index] = (new Rectangle(rx,ry,_tileWidth,_tileHeight));
 		}
 	}

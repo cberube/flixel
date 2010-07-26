@@ -1,5 +1,6 @@
 package org.flixel
 {
+	import flash.utils.getTimer;
 	/**
 	 * FlxMonitor is a simple class that aggregates and averages data.
 	 * Flixel uses this to display the framerate and profiling data
@@ -22,12 +23,27 @@ package org.flixel
 		protected var _data:Array;
 		
 		/**
+		 * [Wasabi] The name of this monitor, for display purposes
+		 */
+		public var name:String;
+		
+		/**
+		 * [Wasabi] The unit this monitor is using for it's values (also for display purposes)
+		 */
+		public var unit:String;
+		
+		/**
+		 * [Wasabi] For internal timing
+		 */
+		private var mark:uint;
+		
+		/**
 		 * Creates the monitor array and sets the size.
 		 * 
 		 * @param	Size	The desired size - more entries means a longer window of averaging.
 		 * @param	Default	The default value of the entries in the array (0 by default).
 		 */
-		public function FlxMonitor(Size:uint,Default:Number=0)
+		public function FlxMonitor(Size:uint,Default:Number=0,Name:String="custom work",Unit:String="ms")
 		{
 			_size = Size;
 			if(_size <= 0)
@@ -36,6 +52,9 @@ package org.flixel
 			_data = new Array(_size);
 			for(var i:uint = 0; i < _size; i++)
 				_data[i] = Default;
+				
+			name = Name;
+			unit = Unit;
 		}
 		
 		/**
@@ -61,6 +80,23 @@ package org.flixel
 			for(var i:uint = 0; i < _size; i++)
 				sum += _data[i];
 			return sum/_size;
+		}
+		
+		/**
+		 * [Wasabi] Starts the internal timer
+		 */
+		public function startTiming():void
+		{
+			this.mark = getTimer();
+		}
+		
+		/**
+		 * [Wasabi] Stops the internal timer and adds the number of milliseconds
+		 * elapse to this monitor's values
+		 */
+		public function stopTiming():void
+		{
+			this.add(getTimer() - this.mark);
 		}
 	}
 }

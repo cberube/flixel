@@ -144,7 +144,7 @@ package org.flixel
 		 * @param	Object		The <code>FlxObject</code> you want to add.  <code>FlxGroup</code> objects will be recursed and their applicable members added automatically.
 		 * @param	List		A <code>uint</code> flag indicating the list to which you want to add the objects.  Options are <code>A_LIST</code> and <code>B_LIST</code>.
 		 */
-		public function add(Object:FlxObject, List:uint):void
+		public function add(Object:FlxObject, List:uint, AllowNonSolid:Boolean = false):void
 		{
 			_oa = List;
 			if(Object._group)
@@ -158,8 +158,8 @@ package org.flixel
 					if((m != null) && m.exists)
 					{
 						if(m._group)
-							add(m,List);
-						else if(m.solid)
+							add(m,List,AllowNonSolid);
+						else if(m.solid || AllowNonSolid)
 						{
 							_o = m;
 							_ol = _o.x;
@@ -305,7 +305,7 @@ package org.flixel
 		 *
 		 * @return	Whether or not any overlaps were found.
 		 */
-		public function overlap(BothLists:Boolean=true,Callback:Function=null):Boolean
+		public function overlap(BothLists:Boolean=true,Callback:Function=null,AllowNonSolid:Boolean=false):Boolean
 		{
 			_oc = Callback;
 			var c:Boolean = false;
@@ -320,7 +320,7 @@ package org.flixel
 					while(itr != null)
 					{
 						_o = itr.object;
-						if(_o.exists && _o.solid && overlapNode())
+						if(_o.exists && (_o.solid || AllowNonSolid) && overlapNode(null,AllowNonSolid))
 							c = true;
 						itr = itr.next;
 					}
@@ -332,15 +332,15 @@ package org.flixel
 					while(itr != null)
 					{
 						_o = itr.object;
-						if(_o.exists && _o.solid)
+						if(_o.exists && (_o.solid || AllowNonSolid))
 						{
-							if((_nw != null) && _nw.overlapNode())
+							if((_nw != null) && _nw.overlapNode(null,AllowNonSolid))
 								c = true;
-							if((_ne != null) && _ne.overlapNode())
+							if((_ne != null) && _ne.overlapNode(null,AllowNonSolid))
 								c = true;
-							if((_se != null) && _se.overlapNode())
+							if((_se != null) && _se.overlapNode(null,AllowNonSolid))
 								c = true;
-							if((_sw != null) && _sw.overlapNode())
+							if((_sw != null) && _sw.overlapNode(null,AllowNonSolid))
 								c = true;
 						}
 						itr = itr.next;
@@ -356,7 +356,7 @@ package org.flixel
 					while(itr != null)
 					{
 						_o = itr.object;
-						if(_o.exists && _o.solid && overlapNode(itr.next))
+						if(_o.exists && (_o.solid || AllowNonSolid) && overlapNode(itr.next,AllowNonSolid))
 							c = true;
 						itr = itr.next;
 					}
@@ -364,13 +364,13 @@ package org.flixel
 			}
 			
 			//Advance through the tree by calling overlap on each child
-			if((_nw != null) && _nw.overlap(BothLists,_oc))
+			if((_nw != null) && _nw.overlap(BothLists,_oc,AllowNonSolid))
 				c = true;
-			if((_ne != null) && _ne.overlap(BothLists,_oc))
+			if((_ne != null) && _ne.overlap(BothLists,_oc,AllowNonSolid))
 				c = true;
-			if((_se != null) && _se.overlap(BothLists,_oc))
+			if((_se != null) && _se.overlap(BothLists,_oc,AllowNonSolid))
 				c = true;
-			if((_sw != null) && _sw.overlap(BothLists,_oc))
+			if((_sw != null) && _sw.overlap(BothLists,_oc,AllowNonSolid))
 				c = true;
 			
 			return c;
@@ -383,7 +383,7 @@ package org.flixel
 		 * 
 		 * @return	Whether or not any overlaps were found.
 		 */
-		protected function overlapNode(Iterator:FlxList=null):Boolean
+		protected function overlapNode(Iterator:FlxList=null,AllowNonSolid:Boolean=false):Boolean
 		{
 			//member list setup
 			var c:Boolean = false;
@@ -404,7 +404,8 @@ package org.flixel
 				while(itr != null)
 				{
 					co = itr.object;
-					if( (_o === co) || !co.exists || !_o.exists || !co.solid || !_o.solid ||
+					if ( (_o === co) || !co.exists || !_o.exists ||
+						(!AllowNonSolid && (!co.solid || !_o.solid)) ||
 						(_o.x + _o.width  < co.x + FlxU.roundingError) ||
 						(_o.x + FlxU.roundingError > co.x + co.width) ||
 						(_o.y + _o.height < co.y + FlxU.roundingError) ||
@@ -415,8 +416,8 @@ package org.flixel
 					}
 					if(_oc == null)
 					{
-						_o.kill();
-						co.kill();
+						//_o.kill();
+						//co.kill();
 						c = true;
 					}
 					else if(_oc(_o,co))

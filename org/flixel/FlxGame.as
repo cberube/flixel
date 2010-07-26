@@ -31,10 +31,10 @@ package org.flixel
 		// So if you are using the Flex 3.x SDK compiler, switch the embed statment below to expose the correct version.
 		
 		//Flex v4.x SDK only (see note above):
-		[Embed(source="data/nokiafc22.ttf",fontFamily="system",embedAsCFF="false")] protected var junk:String;
+		//[Embed(source="data/nokiafc22.ttf",fontFamily="system",embedAsCFF="false")] protected var junk:String;
 		
 		//Flex v3.x SDK only (see note above):
-		//[Embed(source="data/nokiafc22.ttf",fontFamily="system")] protected var junk:String;
+		[Embed(source="data/nokiafc22.ttf",fontFamily="system")] protected var junk:String;
 		
 		[Embed(source="data/beep.mp3")] protected var SndBeep:Class;
 		[Embed(source="data/flixel.mp3")] protected var SndFlixel:Class;
@@ -285,6 +285,7 @@ package org.flixel
 			_console.mtrTotal.add(ems);
 			_total = mark;
 			FlxG.elapsed = _elapsed;
+			FlxG.realElapsed = _elapsed;
 			if(FlxG.elapsed > FlxG.maxElapsed)
 				FlxG.elapsed = FlxG.maxElapsed;
 			FlxG.elapsed *= FlxG.timeScale;
@@ -382,8 +383,8 @@ package org.flixel
 			var soundPrefs:FlxSave;
 			
 			//Set up the view window and double buffering
-			stage.scaleMode = StageScaleMode.NO_SCALE;
-            stage.align = StageAlign.TOP_LEFT;
+			stage.scaleMode = StageScaleMode.SHOW_ALL;
+            stage.align = StageAlign.TOP;
             stage.frameRate = _framerate;
             _screen = new Sprite();
             addChild(_screen);

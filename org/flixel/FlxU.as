@@ -81,6 +81,19 @@ package org.flixel
 				return Math.random();
 		}
 		
+		static public function randomInRange(a : Number, b : Number) : Number
+		{
+			/*if (a < b)
+			{
+				var t : Number;
+				t = a;
+				a = b;
+				b = t;
+			}*/
+			
+			return (FlxU.random() * (b - a)) + a;
+		}
+		
 		/**
 		 * Generate a pseudo-random number.
 		 * 
@@ -236,8 +249,13 @@ package org.flixel
 		 * 
 		 * @return	The altered Velocity value.
 		 */
-		static public function computeVelocity(Velocity:Number, Acceleration:Number=0, Drag:Number=0, Max:Number=10000):Number
+		static public function computeVelocity(Velocity:Number, Acceleration:Number=0, AdditionalAcceleration:Number=0, Drag:Number=0, Max:Number=10000):Number
 		{
+			if (Acceleration != 0)
+			{
+				Acceleration += AdditionalAcceleration;
+			}
+			
 			if(Acceleration != 0)
 				Velocity += Acceleration*FlxG.elapsed;
 			else if(Drag != 0)
@@ -250,6 +268,12 @@ package org.flixel
 				else
 					Velocity = 0;
 			}
+			
+			if (Acceleration == 0)
+			{
+				Velocity += AdditionalAcceleration * FlxG.elapsed;
+			}
+			
 			if((Velocity != 0) && (Max != 10000))
 			{
 				if(Velocity > Max)
@@ -299,17 +323,17 @@ package org.flixel
 		 * @param	Object2		The second object or group you want to check.  If it is the same as the first, flixel knows to just do a comparison within that group.
 		 * @param	Callback	A function with two <code>FlxObject</code> parameters - e.g. <code>myOverlapFunction(Object1:FlxObject,Object2:FlxObject);</code>  If no function is provided, <code>FlxQuadTree</code> will call <code>kill()</code> on both objects.
 		 */
-		static public function overlap(Object1:FlxObject,Object2:FlxObject,Callback:Function=null):Boolean
+		static public function overlap(Object1:FlxObject,Object2:FlxObject,Callback:Function=null,AllowNonSolid:Boolean=true):Boolean
 		{
 			if( (Object1 == null) || !Object1.exists ||
 				(Object2 == null) || !Object2.exists )
 				return false;
 			quadTree = new FlxQuadTree(quadTreeBounds.x,quadTreeBounds.y,quadTreeBounds.width,quadTreeBounds.height);
-			quadTree.add(Object1,FlxQuadTree.A_LIST);
+			quadTree.add(Object1,FlxQuadTree.A_LIST,AllowNonSolid);
 			if(Object1 === Object2)
-				return quadTree.overlap(false,Callback);
-			quadTree.add(Object2,FlxQuadTree.B_LIST);
-			return quadTree.overlap(true,Callback);
+				return quadTree.overlap(false,Callback,AllowNonSolid);
+			quadTree.add(Object2,FlxQuadTree.B_LIST,AllowNonSolid);
+			return quadTree.overlap(true,Callback,AllowNonSolid);
 		}
 		
 		/**
@@ -342,6 +366,8 @@ package org.flixel
 		 * This quad tree callback function can be used externally as well.
 		 * Takes two objects and separates them along their X axis (if possible/reasonable).
 		 * 
+		 * [CB 2010-06-12] Added preCollide check / early exit
+		 * 
 		 * @param	Object1		The first object or group you want to check.
 		 * @param	Object2		The second object or group you want to check.
 		 */
@@ -354,8 +380,8 @@ package org.flixel
 				return false;
 			
 			//Give the objects a heads up that we're about to resolve some collisions
-			Object1.preCollide(Object2);
-			Object2.preCollide(Object1);
+			if (!Object1.preCollide(Object2, false)) return false;
+			if (!Object2.preCollide(Object1, false)) return false;
 
 			//Basic resolution variables
 			var f1:Boolean;
@@ -539,6 +565,8 @@ package org.flixel
 		 * This quad tree callback function can be used externally as well.
 		 * Takes two objects and separates them along their Y axis (if possible/reasonable).
 		 * 
+		 * [CB 2010-06-12] Added preCollide check / early exit
+		 * 
 		 * @param	Object1		The first object or group you want to check.
 		 * @param	Object2		The second object or group you want to check.
 		 */
@@ -551,8 +579,8 @@ package org.flixel
 				return false;
 			
 			//Give the objects a heads up that we're about to resolve some collisions
-			Object1.preCollide(Object2);
-			Object2.preCollide(Object1);
+			if (!Object1.preCollide(Object2, true)) return false;
+			if (!Object2.preCollide(Object1, true)) return false;
 			
 			//Basic resolution variables
 			var overlap:Number;
@@ -748,6 +776,35 @@ package org.flixel
 			}
 			
 			return hit;
+		}
+		
+		/**
+		 * Generate a Flash <code>uint</code> color from RGBA components.
+		 * 
+		 * @param   Red     The red component, between 0 and 255.
+		 * @param   Green   The green component, between 0 and 255.
+		 * @param   Blue    The blue component, between 0 and 255.
+		 * @param   Alpha   How opaque the color should be, either between 0 and 1 or 0 and 255.
+		 * 
+		 * @return  The color as a <code>uint</code>.
+		 */
+		static public function getColor(Red:uint, Green:uint, Blue:uint, Alpha:Number=1.0):uint
+		{
+			return (((Alpha>1)?Alpha:(Alpha * 255)) & 0xFF) << 24 | (Red & 0xFF) << 16 | (Green & 0xFF) << 8 | (Blue & 0xFF);
+		}
+		
+		/**
+		 * Generate a Flash <code>uint</code> color from RGBA components.
+		 * 
+		 * @param   Red     The red component, between 0 and 255.
+		 * @param   Green   The green component, between 0 and 255.
+		 * @param   Blue    The blue component, between 0 and 255.
+		 * 
+		 * @return  The color as a <code>uint</code>.
+		 */
+		static public function getSolidColor(Red:uint, Green:uint, Blue:uint):uint
+		{
+			return (Red & 0xFF) << 16 | (Green & 0xFF) << 8 | (Blue & 0xFF);
 		}
 	}
 }

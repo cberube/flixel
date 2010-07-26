@@ -22,6 +22,11 @@ package org.flixel.data
 		public var mtrTotal:FlxMonitor;
 		
 		/**
+		 * [Wasabi] Custom monitors to display in the console
+		 */
+		private var mtrCustom:Array;
+		
+		/**
 		 * @private
 		 */
 		protected const MAX_CONSOLE_LINES:uint = 256;
@@ -92,6 +97,9 @@ package org.flixel.data
 			mtrUpdate = new FlxMonitor(8);
 			mtrRender = new FlxMonitor(8);
 			mtrTotal = new FlxMonitor(8);
+			
+			//	Custom monitor collection
+			mtrCustom = new Array();
 
 			_text = new TextField();
 			_text.width = tmp.width;
@@ -134,6 +142,8 @@ package org.flixel.data
 			addChild(_extraDisplay);
 			
 			_lines = new Array();
+			
+			//	[Wasabi] Custom monitor support
 		}
 		
 		/**
@@ -175,6 +185,14 @@ package org.flixel.data
 		}
 		
 		/**
+		 * [Wasabi] Adds a custom monitor to the monitor list
+		 */
+		public function addCustomMonitor(m:FlxMonitor):void
+		{
+			mtrCustom.push(m);
+		}
+		
+		/**
 		 * Updates and/or animates the dev console.
 		 */
 		public function update():void
@@ -186,6 +204,19 @@ package org.flixel.data
 			var fx:uint = up+rn;
 			var tt:uint = uint(total);
 			_extraDisplay.text = up + "ms update\n" + rn + "ms render\n" + fx + "ms flixel\n" + (tt-fx) + "ms flash\n" + tt + "ms total";
+			
+			if (mtrCustom.length > 0)
+			{
+				var i : uint;
+				var l : uint = mtrCustom.length;
+				
+				_extraDisplay.appendText("\n");
+				
+				for (i = 0; i < l; i++)
+				{
+					_extraDisplay.appendText(mtrCustom[i].average() + mtrCustom[i].unit + " " + mtrCustom[i].name + "\n");
+				}
+			}
 			
 			if(_Y < _YT)
 				_Y += FlxG.height*10*FlxG.elapsed;

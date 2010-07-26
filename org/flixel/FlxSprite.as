@@ -302,7 +302,7 @@ package org.flixel
 		/**
 		 * Resets some important variables for sprite optimization and rendering.
 		 */
-		protected function resetHelpers():void
+		public function resetHelpers():void
 		{
 			_flashRect.x = 0;
 			_flashRect.y = 0;
@@ -446,6 +446,32 @@ package org.flixel
 			if(Brush.angle != 0) _mtx.rotate(Math.PI * 2 * (Brush.angle / 360));
 			_mtx.translate(X+Brush.origin.x,Y+Brush.origin.y);
 			_pixels.draw(b,_mtx,null,Brush.blend,null,Brush.antialiasing);
+			calcFrame();
+		}
+		
+		public function drawOnto(Target:BitmapData, X : int = 0 , Y : int = 0) : void
+		{
+			//Simple draw
+			if(((angle == 0) || (_bakedRotation > 0)) && (scale.x == 1) && (scale.y == 1) && (blend == null))
+			{
+				_flashPoint.x = X;
+				_flashPoint.y = Y;
+				_flashRect2.width = width;
+				_flashRect2.height = height;
+				Target.copyPixels(_framePixels,_flashRect2,_flashPoint,null,null,true);
+				_flashRect2.width = _framePixels.width;
+				_flashRect2.height = _framePixels.height;
+				calcFrame();
+				return;
+			}
+
+			//Advanced draw
+			_mtx.identity();
+			_mtx.translate(-origin.x,-origin.y);
+			_mtx.scale(scale.x,scale.y);
+			if(angle != 0) _mtx.rotate(Math.PI * 2 * (angle / 360));
+			_mtx.translate(X+origin.x,Y+origin.y);
+			Target.draw(_framePixels,_mtx,null,blend,null,antialiasing);
 			calcFrame();
 		}
 		
@@ -652,6 +678,13 @@ package org.flixel
 		{
 			_curAnim = null;
 			_caf = Frame;
+			calcFrame();
+		}
+		
+		public function setAnimationFrame(frame : uint) : void
+		{
+			_caf = _curFrame = frame;
+			_frameTimer = 0;
 			calcFrame();
 		}
 		

@@ -51,6 +51,13 @@ package org.flixel
 		 * Represents the amount of time in seconds that passed since last frame.
 		 */
 		static public var elapsed:Number;
+		
+		/**
+		 * Represents the actual amount of time in seconds that passed since last frame, discounting the
+		 * limit set by maxElapsed and ignoring the timeScale setting (useful for clocks that run in wall-clock time)
+		 */
+		static public var realElapsed : Number;
+		
 		/**
 		 * Essentially locks the framerate to a minimum value - any slower and you'll get slowdown instead of frameskip; default is 1/30th of a second.
 		 */
@@ -314,6 +321,25 @@ package org.flixel
 			s.volume = Volume;
 			s.play();
 			return s;
+		}
+		
+		static public function playAt(EmbeddedSound : Class, origin : FlxPoint, listener : FlxObject, radius : Number = 100, loop : Boolean = false) : FlxSound
+		{
+			var sl:uint = sounds.length;
+			for(var i:uint = 0; i < sl; i++)
+				if(!(sounds[i] as FlxSound).active)
+					break;
+			if(sounds[i] == null)
+				sounds[i] = new FlxSound();
+			var sound:FlxSound = sounds[i];
+			
+			sound.loadEmbedded(EmbeddedSound, loop);
+			sound.volume = 1;
+			sound.proximity(origin.x, origin.y, listener, radius);
+			sound.update();
+			sound.play();
+			
+			return sound;
 		}
 		
 		/**
@@ -688,6 +714,12 @@ package org.flixel
 
 			FlxU.setWorldBounds(0,0,FlxG.width,FlxG.height);
 		}
+		
+		static public function snapCameraToObject(target : FlxObject) : void
+		{
+			scroll.x = -target.x;
+			scroll.y = -target.y;
+		}
 
 		/**
 		 * Internal function that updates the camera and parallax scrolling.
@@ -751,6 +783,14 @@ package org.flixel
 		{
 			keys.update();
 			mouse.update(state.mouseX,state.mouseY,scroll.x,scroll.y);
+		}
+		
+		/**
+		 * [Wasabi] Provides access to the console
+		 */
+		static public function get console():FlxConsole
+		{
+			return _game._console;
 		}
 	}
 }

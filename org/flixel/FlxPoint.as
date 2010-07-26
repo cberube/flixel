@@ -31,7 +31,7 @@ package org.flixel
 		 */
 		public function toString():String
 		{
-			return FlxU.getClassName(this,true);
+			return FlxU.getClassName(this,true) + "[" + this.x + ", " + this.y + "]";
 		}
 	}
 }

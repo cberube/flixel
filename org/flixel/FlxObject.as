@@ -34,6 +34,13 @@ package org.flixel
 		 * The basic speed of this object.
 		 */
 		public var velocity:FlxPoint;
+		
+		/**
+		 * [CB 2010-06-12] An additional acceleration component added to the standard <code>velocity</code> of this
+		 * object. Useful for implementing faux constant forces, like wind or currents.
+		 */
+		public var additionalAcceleration:FlxPoint;
+		
 		/**
 		 * How fast the speed of this object is changing.
 		 * Useful for smooth movement and gravity.
@@ -207,6 +214,7 @@ package org.flixel
 
 			velocity = new FlxPoint();
 			acceleration = new FlxPoint();
+			additionalAcceleration = new FlxPoint();
 			drag = new FlxPoint();
 			maxVelocity = new FlxPoint(10000,10000);
 			
@@ -305,7 +313,7 @@ package org.flixel
 			onFloor = false;
 			var vc:Number;
 
-			vc = (FlxU.computeVelocity(angularVelocity,angularAcceleration,angularDrag,maxAngular) - angularVelocity)/2;
+			vc = (FlxU.computeVelocity(angularVelocity,angularAcceleration,0,angularDrag,maxAngular) - angularVelocity)/2;
 			angularVelocity += vc; 
 			angle += angularVelocity*FlxG.elapsed;
 			angularVelocity += vc;
@@ -325,12 +333,14 @@ package org.flixel
 			else
 				thrustComponents = _pZero;
 			
-			vc = (FlxU.computeVelocity(velocity.x,acceleration.x+thrustComponents.x,drag.x,maxVelocity.x) - velocity.x)/2;
+			//vc = (FlxU.computeVelocity(velocity.x,acceleration.x+thrustComponents.x,drag.x,maxVelocity.x) - velocity.x)/2;
+			vc = (FlxU.computeVelocity(velocity.x,acceleration.x+thrustComponents.x,additionalAcceleration.x,drag.x,maxVelocity.x) - velocity.x)/2;
 			velocity.x += vc;
 			var xd:Number = velocity.x*FlxG.elapsed;
 			velocity.x += vc;
 			
-			vc = (FlxU.computeVelocity(velocity.y,acceleration.y+thrustComponents.y,drag.y,maxVelocity.y) - velocity.y)/2;
+			//vc = (FlxU.computeVelocity(velocity.y,acceleration.y+thrustComponents.y,drag.y,maxVelocity.y) - velocity.y)/2;
+			vc = (FlxU.computeVelocity(velocity.y,acceleration.y+thrustComponents.y,additionalAcceleration.y,drag.y,maxVelocity.y) - velocity.y)/2;
 			velocity.y += vc;
 			var yd:Number = velocity.y*FlxG.elapsed;
 			velocity.y += vc;
@@ -465,11 +475,16 @@ package org.flixel
 		 * this function each time two objects are compared to see if they collide.
 		 * It doesn't necessarily mean these objects WILL collide, however.
 		 * 
+		 * [CB 2010-06-12] Modified this so that objects have a chance to opt-out of collisions
+		 * against certain other objects by returning false.
+		 * 
 		 * @param	Object	The <code>FlxObject</code> you're about to run into.
+		 * @param	Boolean	isVertical <code>true</code> if this is a y-collision, false if it's an x-collision
 		 */
-		public function preCollide(Object:FlxObject):void
+		public function preCollide(Object:FlxObject, isVertical : Boolean):Boolean
 		{
 			//Most objects don't have to do anything here.
+			return true;
 		}
 		
 		/**
@@ -492,7 +507,8 @@ package org.flixel
 		 */
 		public function hitRight(Contact:FlxObject,Velocity:Number):void
 		{
-			hitLeft(Contact,Velocity);
+			if(!fixed)
+				velocity.x = Velocity;
 		}
 		
 		/**
@@ -580,6 +596,21 @@ package org.flixel
 			if((_point.x + width < 0) || (_point.x > FlxG.width) || (_point.y + height < 0) || (_point.y > FlxG.height))
 				return false;
 			return true;
+		}
+		
+		public function insideWorld() : Boolean
+		{
+			if (
+				this.x < FlxU.quadTreeBounds.left || this.x > FlxU.quadTreeBounds.right ||
+				this.y < FlxU.quadTreeBounds.top || this.y > FlxU.quadTreeBounds.bottom
+			)
+			{
+				return false;
+			}
+			else
+			{
+				return true;
+			}
 		}
 		
 		/**
